@@ -1,3 +1,5 @@
+# Terraform_ec2.yaml
+
 Parameters:
   InstanceTypeInput:
     Description: Select an instance type
@@ -10,6 +12,7 @@ Parameters:
       - t3.medium
 
 Resources:
+  # Create EC2 instance to install terraform CLI
   TerraformEC2:
     Type: AWS::EC2::Instance
     Properties:
@@ -18,14 +21,14 @@ Resources:
       InstanceType: !Ref InstanceTypeInput
       SecurityGroupIds:
         - !Ref SSHSecurityGroup
-      UserData:
-        Fn::Base64: |
-          mkdir Terraform-Folder
+      UserData: 
+        Fn::Base64: !Sub sudo mkdir Terraform
 
 #          sudo dnf install -y dnf-plugins-core
 #          sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
 #          sudo dnf install -y terraform
 
+  # Create Security Group to allow inbound SSH traffic
   SSHSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
@@ -35,4 +38,3 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
-
