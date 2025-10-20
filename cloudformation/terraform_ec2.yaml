@@ -21,12 +21,12 @@ Resources:
       InstanceType: !Ref InstanceTypeInput
       SecurityGroupIds:
         - !Ref SSHSecurityGroup
-      UserData: 
-        Fn::Base64: !Sub sudo mkdir Terraform
-
-#          sudo dnf install -y dnf-plugins-core
-#          sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
-#          sudo dnf install -y terraform
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          sudo dnf install -y dnf-plugins-core
+          sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
+          sudo dnf install -y terraform
 
   # Create Security Group to allow inbound SSH traffic
   SSHSecurityGroup:
