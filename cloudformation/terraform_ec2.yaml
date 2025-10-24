@@ -12,21 +12,89 @@ Parameters:
       - t3.medium
 
 Resources:
+  # Create VPC
+  TerraformVPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.0.0.0/16
+      EnableDnsHostnames: True
+      Tags:
+        - Key: Name
+          Value: Terraform-VPC
+
+  # Create Internet Gateway
+  TerraformIG:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: Terraform-IG
+
+  # Attaches VPC to Internet Gateway
+  TerraformVPCToIG:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref TerraformIG
+      VpcId: !Ref TerraformVPC
+  
+  # Create public subnet
+  TerraformPublicSubnet:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone: us-east-1a
+      CidrBlock: 10.0.18.0/24
+      MapPublicIpOnLaunch: True
+      VpcId: !Ref TerraformVPC
+      Tags:
+        - Key: Name
+          Value: Terraform-PublicSubnet
+  
+  # Create route table for public subnet
+  TerraformPublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref TerraformVPC
+      Tags:
+        - Key: Name
+          Value: Terraform-Public-RouteTable
+
+  # Create a route to Internet Gateway and add to the route table
+  TerraformPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: TerraformVPCToIG
+    Properties:
+      RouteTableId: !Ref TerraformPublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref TerraformIG
+  
+  # Associate the public subnet to route table
+  TerraformPublicSubnetToPublicRouteTable:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref TerraformPublicRouteTable
+      SubnetId: !Ref TerraformPublicSubnet
+
   # Create EC2 instance and install terraform CLI
   TerraformEC2:
     Type: AWS::EC2::Instance
+    DependsOn:
+      - TerraformPublicRoute
+      - TerraformPublicSubnetToPublicRouteTable
     Properties:
-      AvailabilityZone: us-east-1a
       ImageId: ami-0341d95f75f311023
       InstanceType: !Ref InstanceTypeInput
-      SecurityGroupIds:
-        - !Ref SSHSecurityGroup
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
           sudo dnf install -y dnf-plugins-core
           sudo dnf config-manager --add-repo https://rpm.releases.hashicorp.com/AmazonLinux/hashicorp.repo
           sudo dnf install -y terraform
+      SubnetId: !Ref TerraformPublicSubnet
+      SecurityGroupIds:
+        - !Ref SSHSecurityGroup
+      Tags:
+        - Key: Name
+          Value: Terraform-EC2
 
   # Create Security Group to allow inbound SSH traffic
   SSHSecurityGroup:
@@ -38,3 +106,4 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: 18.206.107.24/29
+      VpcId: !Ref TerraformVPC
